@@ -313,3 +313,145 @@ else:
         "No partner currently satisfies "
         "the basic eligibility conditions."
     )
+
+# ==========================================
+# ELIGIBLE PARTNERS - OPERATIONAL COMPARISON
+# ==========================================
+
+st.divider()
+st.subheader("📊 Eligible Partner Operational Comparison")
+
+# Clean additional sheet column names
+workload.columns = workload.columns.str.strip()
+travel.columns = travel.columns.str.strip()
+
+# Find partner ID column
+partner_id_col = find_column(
+    partners,
+    ["Partner ID", "PartnerID"]
+)
+
+workload_partner_id_col = find_column(
+    workload,
+    ["Partner ID", "PartnerID"]
+)
+
+travel_partner_id_col = find_column(
+    travel,
+    ["Partner ID", "PartnerID"]
+)
+
+travel_order_id_col = find_column(
+    travel,
+    ["Order ID", "OrderID"]
+)
+
+if (
+    partner_id_col is None
+    or workload_partner_id_col is None
+    or travel_partner_id_col is None
+    or travel_order_id_col is None
+):
+    st.error("Partner ID / Order ID columns missing in Workload or Travel sheet.")
+    st.stop()
+
+
+# Create list of eligible partner names
+eligible_names = eligibility_df[
+    eligibility_df["Eligible"] == "✅ YES"
+]["Partner"].tolist()
+
+
+# Get eligible partner master records
+eligible_master = partners[
+    partners[partner_name_col].isin(eligible_names)
+].copy()
+
+
+# Filter travel only for selected order
+selected_travel = travel[
+    travel[travel_order_id_col].astype(str)
+    == str(selected_order_id)
+].copy()
+
+
+# Merge partner + workload
+comparison = eligible_master.merge(
+    workload,
+    left_on=partner_id_col,
+    right_on=workload_partner_id_col,
+    how="left"
+)
+
+
+# Merge travel
+comparison = comparison.merge(
+    selected_travel,
+    left_on=partner_id_col,
+    right_on=travel_partner_id_col,
+    how="left",
+    suffixes=("", "_travel")
+)
+
+
+# Calculate net earning from this order
+payout = pd.to_numeric(
+    selected_order["Payout"],
+    errors="coerce"
+)
+
+travel_cost_col = find_column(
+    comparison,
+    [
+        "One-Way Travel Cost (₹)",
+        "Travel Cost (₹)",
+        "Travel Cost"
+    ]
+)
+
+if travel_cost_col is not None:
+    comparison["Net Earning From Order (₹)"] = (
+        payout
+        - pd.to_numeric(
+            comparison[travel_cost_col],
+            errors="coerce"
+        )
+    )
+else:
+    comparison["Net Earning From Order (₹)"] = None
+
+
+# Build clean comparison table
+display_columns = []
+
+possible_display_columns = [
+    partner_name_col,
+    "Location",
+    "Distance (km)",
+    "Mode of Transport",
+    "Traffic Level",
+    "ETA (min)",
+    travel_cost_col,
+    "Current Orders",
+    "Busy Minutes Today",
+    "Next Available Time",
+    "Today Earnings",
+    "Orders Completed Today",
+    "Current Job Status",
+    "Net Earning From Order (₹)"
+]
+
+for col in possible_display_columns:
+    if col is not None and col in comparison.columns:
+        display_columns.append(col)
+
+
+comparison_display = comparison[
+    display_columns
+].copy()
+
+st.dataframe(
+    comparison_display,
+    use_container_width=True,
+    hide_index=True
+)
