@@ -548,7 +548,9 @@ score_df["Workload Score"] = (
 
 # ---------- EARNINGS FAIRNESS ----------
 today_earnings = pd.to_numeric(
-    score_df["Today Earnings"],
+    score_df["Today Earnings"]
+    .astype(str)
+    .str.replace(",", "", regex=False),
     errors="coerce"
 )
 
