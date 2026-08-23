@@ -48,21 +48,23 @@ try:
     with tab3:
         st.subheader("Orders")
         st.dataframe(orders, use_container_width=True, hide_index=True)
-    with tab4:
-    st.subheader("Workload")
-    st.dataframe(
-        workload,
-        use_container_width=True,
-        hide_index=True
-    )
 
-with tab5:
-    st.subheader("Travel")
-    st.dataframe(
-        travel,
-        use_container_width=True,
-        hide_index=True
-    )
+    with tab4:
+        st.subheader("Workload")
+        st.dataframe(
+            workload,
+            use_container_width=True,
+            hide_index=True
+        )
+
+    with tab5:
+        st.subheader("Travel")
+        st.dataframe(
+            travel,
+            use_container_width=True,
+            hide_index=True
+        )
+    
 
 except Exception as e:
     st.error("Could not load Google Sheet data.")
