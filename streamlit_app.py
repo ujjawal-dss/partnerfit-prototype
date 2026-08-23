@@ -845,3 +845,37 @@ else:
         f"{best_name} is both the nearest eligible partner "
         f"and the highest-ranked partner."
     )
+
+# ==========================================
+# ASSIGN PARTNER ACTION
+# ==========================================
+
+st.divider()
+st.subheader("✅ Assign Partner")
+
+if st.button(
+    f"Assign {best_name} to Order {selected_order_id}",
+    type="primary"
+):
+    st.success(
+        f"Order {selected_order_id} has been assigned to {best_name}."
+    )
+
+    st.write("### Assignment Summary")
+
+    assignment_summary = pd.DataFrame([
+        {
+            "Order ID": selected_order_id,
+            "Service": selected_service,
+            "Assigned Partner": best_name,
+            "PartnerFit Score": best_score,
+            "ETA (min)": best_eta,
+            "Status": "Assigned"
+        }
+    ])
+
+    st.dataframe(
+        assignment_summary,
+        use_container_width=True,
+        hide_index=True
+    )
