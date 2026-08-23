@@ -374,6 +374,13 @@ selected_travel = travel[
     == str(selected_order_id)
 ].copy()
 
+if selected_travel.empty:
+    st.warning(
+        f"Travel data is not available for Order {selected_order_id}. "
+        "Recommendation cannot be calculated yet."
+    )
+    st.stop()
+
 
 # Merge partner + workload
 comparison = eligible_master.merge(
