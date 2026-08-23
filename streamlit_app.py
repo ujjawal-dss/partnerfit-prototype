@@ -686,27 +686,6 @@ st.dataframe(
     hide_index=True
 )
 
-score_debug = score_df[
-    [
-        partner_name_col,
-        "ETA Score",
-        "Availability Score",
-        "Workload Score",
-        "Earnings Fairness Score",
-        "Experience Score",
-        "Reliability Score",
-        "Travel Cost Score",
-        "Distance Score",
-        "PartnerFit Score"
-    ]
-]
-
-st.write("### Score Debug")
-st.dataframe(
-    score_debug,
-    use_container_width=True,
-    hide_index=True
-)
 
 # ==========================================
 # FINAL RECOMMENDATION
