@@ -707,3 +707,162 @@ st.dataframe(
     use_container_width=True,
     hide_index=True
 )
+
+# ==========================================
+# FINAL RECOMMENDATION
+# ==========================================
+
+st.divider()
+st.subheader("🏆 Recommended Partner")
+
+# Top-ranked partner
+best_partner = score_df.iloc[0]
+
+best_name = best_partner[partner_name_col]
+best_score = best_partner["PartnerFit Score"]
+
+# Find nearest eligible partner
+nearest_partner = score_df.sort_values(
+    "Distance (km)",
+    ascending=True
+).iloc[0]
+
+nearest_name = nearest_partner[partner_name_col]
+nearest_distance = nearest_partner["Distance (km)"]
+
+# Key metrics
+best_distance = best_partner["Distance (km)"]
+best_eta = best_partner["ETA (min)"]
+best_orders = best_partner["Current Orders"]
+best_busy = best_partner["Busy Minutes Today"]
+best_today_earnings = best_partner["Today Earnings"]
+best_reliability = best_partner["Reliability Score"]
+best_experience = best_partner["Experience Score"]
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric(
+        "Recommended Partner",
+        best_name
+    )
+
+with col2:
+    st.metric(
+        "PartnerFit Score",
+        f"{best_score}/100"
+    )
+
+with col3:
+    st.metric(
+        "ETA",
+        f"{best_eta} min"
+    )
+
+with col4:
+    st.metric(
+        "Distance",
+        f"{best_distance} km"
+    )
+
+st.write("### Why this partner?")
+
+reasons = []
+
+# ETA reason
+if best_partner["ETA Score"] >= 70:
+    reasons.append(
+        f"Fast ETA of {best_eta} minutes."
+    )
+
+# Workload reason
+if best_partner["Workload Score"] >= 70:
+    reasons.append(
+        f"Low operational load: {best_orders} current order(s) "
+        f"and {best_busy} busy minutes today."
+    )
+
+# Earnings fairness reason
+if best_partner["Earnings Fairness Score"] >= 70:
+    reasons.append(
+        f"Lower earnings today (₹{best_today_earnings}), "
+        f"supporting fairer order distribution."
+    )
+
+# Reliability
+if best_partner["Reliability Score"] >= 90:
+    reasons.append(
+        f"Strong reliability score of "
+        f"{best_reliability:.1f}/100."
+    )
+
+# Experience
+if best_partner["Experience Score"] >= 70:
+    reasons.append(
+        f"Strong experience fit for {selected_service}."
+    )
+
+for reason in reasons:
+    st.write("✅", reason)
+
+# ------------------------------------------
+# NEAREST VS RECOMMENDED COMPARISON
+# ------------------------------------------
+
+st.write("### Nearest Partner vs Recommended Partner")
+
+if nearest_name != best_name:
+
+    st.warning(
+        f"The nearest eligible partner is {nearest_name} "
+        f"at {nearest_distance} km, but PartnerFit recommends "
+        f"{best_name}."
+    )
+
+    nearest_score = nearest_partner["PartnerFit Score"]
+
+    compare_df = pd.DataFrame([
+        {
+            "Partner": nearest_name,
+            "Distance (km)": nearest_partner["Distance (km)"],
+            "ETA (min)": nearest_partner["ETA (min)"],
+            "Current Orders": nearest_partner["Current Orders"],
+            "Busy Minutes": nearest_partner["Busy Minutes Today"],
+            "Today Earnings": nearest_partner["Today Earnings"],
+            "Reliability": round(
+                nearest_partner["Reliability Score"], 1
+            ),
+            "PartnerFit Score": nearest_score
+        },
+        {
+            "Partner": best_name,
+            "Distance (km)": best_partner["Distance (km)"],
+            "ETA (min)": best_partner["ETA (min)"],
+            "Current Orders": best_partner["Current Orders"],
+            "Busy Minutes": best_partner["Busy Minutes Today"],
+            "Today Earnings": best_partner["Today Earnings"],
+            "Reliability": round(
+                best_partner["Reliability Score"], 1
+            ),
+            "PartnerFit Score": best_score
+        }
+    ])
+
+    st.dataframe(
+        compare_df,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    st.success(
+        f"Decision: {best_name} is preferred because the "
+        f"overall operational outcome is stronger, even though "
+        f"{nearest_name} is closer."
+    )
+
+else:
+
+    st.success(
+        f"{best_name} is both the nearest eligible partner "
+        f"and the highest-ranked partner."
+    )
