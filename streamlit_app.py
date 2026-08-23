@@ -487,3 +487,199 @@ st.dataframe(
     use_container_width=True,
     hide_index=True
 )
+
+# ==========================================
+# CALCULATE PARTNER SCORES
+# ==========================================
+
+st.write("### Partner Scores")
+
+score_df = comparison.copy()
+
+# ---------- ETA SCORE ----------
+eta = pd.to_numeric(score_df["ETA (min)"], errors="coerce")
+score_df["ETA Score"] = 100 * (
+    eta.max() - eta
+) / max(eta.max() - eta.min(), 1)
+
+# ---------- DISTANCE SCORE ----------
+distance = pd.to_numeric(
+    score_df["Distance (km)"],
+    errors="coerce"
+)
+
+score_df["Distance Score"] = 100 * (
+    distance.max() - distance
+) / max(distance.max() - distance.min(), 1)
+
+# ---------- TRAVEL COST SCORE ----------
+travel_cost = pd.to_numeric(
+    score_df[travel_cost_col],
+    errors="coerce"
+)
+
+score_df["Travel Cost Score"] = 100 * (
+    travel_cost.max() - travel_cost
+) / max(travel_cost.max() - travel_cost.min(), 1)
+
+# ---------- WORKLOAD SCORE ----------
+current_orders = pd.to_numeric(
+    score_df["Current Orders"],
+    errors="coerce"
+)
+
+busy_minutes = pd.to_numeric(
+    score_df["Busy Minutes Today"],
+    errors="coerce"
+)
+
+order_score = 100 * (
+    current_orders.max() - current_orders
+) / max(current_orders.max() - current_orders.min(), 1)
+
+busy_score = 100 * (
+    busy_minutes.max() - busy_minutes
+) / max(busy_minutes.max() - busy_minutes.min(), 1)
+
+score_df["Workload Score"] = (
+    0.5 * order_score +
+    0.5 * busy_score
+)
+
+# ---------- EARNINGS FAIRNESS ----------
+today_earnings = pd.to_numeric(
+    score_df["Today Earnings"],
+    errors="coerce"
+)
+
+score_df["Earnings Fairness Score"] = 100 * (
+    today_earnings.max() - today_earnings
+) / max(
+    today_earnings.max() - today_earnings.min(),
+    1
+)
+
+# ---------- AVAILABILITY ----------
+availability_col = find_column(
+    score_df,
+    ["Availability Commitment (Minutes)"]
+)
+
+if availability_col:
+    availability = pd.to_numeric(
+        score_df[availability_col],
+        errors="coerce"
+    )
+
+    score_df["Availability Score"] = 100 * (
+        availability - availability.min()
+    ) / max(
+        availability.max() - availability.min(),
+        1
+    )
+else:
+    score_df["Availability Score"] = 50
+
+
+# ---------- SERVICE EXPERIENCE ----------
+experience_map = {
+    "Facial": "Facial Exp.",
+    "Waxing": "Waxing Exp.",
+    "Cleanup": "Cleanup Exp.",
+    "Hair Spa": "Hair Spa Exp."
+}
+
+experience_col = experience_map.get(selected_service)
+
+if experience_col in score_df.columns:
+    experience = pd.to_numeric(
+        score_df[experience_col],
+        errors="coerce"
+    )
+
+    score_df["Experience Score"] = 100 * (
+        experience - experience.min()
+    ) / max(
+        experience.max() - experience.min(),
+        1
+    )
+else:
+    score_df["Experience Score"] = 50
+
+
+# ---------- RELIABILITY ----------
+acceptance = pd.to_numeric(
+    score_df["Acceptance Rate"]
+    .astype(str)
+    .str.replace("%", ""),
+    errors="coerce"
+)
+
+completion = pd.to_numeric(
+    score_df["Completion Rate"]
+    .astype(str)
+    .str.replace("%", ""),
+    errors="coerce"
+)
+
+cancellation = pd.to_numeric(
+    score_df["Cancellation Rate"]
+    .astype(str)
+    .str.replace("%", ""),
+    errors="coerce"
+)
+
+rating = pd.to_numeric(
+    score_df["Rating"],
+    errors="coerce"
+)
+
+score_df["Reliability Score"] = (
+    acceptance * 0.25
+    + completion * 0.35
+    + (100 - cancellation) * 0.20
+    + (rating / 5 * 100) * 0.20
+)
+
+
+# ---------- FINAL PARTNERFIT SCORE ----------
+score_df["PartnerFit Score"] = (
+    score_df["ETA Score"] * WEIGHTS["ETA"]
+    + score_df["Availability Score"] * WEIGHTS["Availability"]
+    + score_df["Workload Score"] * WEIGHTS["Workload"]
+    + score_df["Earnings Fairness Score"] * WEIGHTS["Earnings Fairness"]
+    + score_df["Experience Score"] * WEIGHTS["Experience"]
+    + score_df["Reliability Score"] * WEIGHTS["Reliability"]
+    + score_df["Travel Cost Score"] * WEIGHTS["Travel Cost"]
+    + score_df["Distance Score"] * WEIGHTS["Distance"]
+)
+
+score_df["PartnerFit Score"] = (
+    score_df["PartnerFit Score"]
+    .round(1)
+)
+
+score_df = score_df.sort_values(
+    "PartnerFit Score",
+    ascending=False
+)
+
+ranking_display = score_df[
+    [
+        partner_name_col,
+        "Distance (km)",
+        "ETA (min)",
+        "Current Orders",
+        "Busy Minutes Today",
+        "Today Earnings",
+        "Experience Score",
+        "Reliability Score",
+        "PartnerFit Score"
+    ]
+].copy()
+
+st.dataframe(
+    ranking_display,
+    use_container_width=True,
+    hide_index=True
+)
