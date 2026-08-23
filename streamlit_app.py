@@ -455,3 +455,35 @@ st.dataframe(
     use_container_width=True,
     hide_index=True
 )
+
+# ==========================================
+# PARTNERFIT - SCORING ENGINE
+# ==========================================
+
+st.divider()
+st.subheader("🧠 PartnerFit Decision Engine")
+
+# Decision weights
+WEIGHTS = {
+    "ETA": 0.20,
+    "Availability": 0.20,
+    "Workload": 0.15,
+    "Earnings Fairness": 0.15,
+    "Experience": 0.10,
+    "Reliability": 0.10,
+    "Travel Cost": 0.05,
+    "Distance": 0.05
+}
+
+st.write("### Decision Weights")
+
+weights_df = pd.DataFrame({
+    "Factor": WEIGHTS.keys(),
+    "Weight": [f"{v*100:.0f}%" for v in WEIGHTS.values()]
+})
+
+st.dataframe(
+    weights_df,
+    use_container_width=True,
+    hide_index=True
+)
