@@ -52,63 +52,208 @@ except Exception as e:
 st.divider()
 st.subheader("🔍 Partner Eligibility Check")
 
-# Select Order
+# Clean column names
+partners.columns = partners.columns.str.strip()
+services.columns = services.columns.str.strip()
+orders.columns = orders.columns.str.strip()
+
+
+# Helper function to find matching column names
+def find_column(df, possible_names):
+    for name in possible_names:
+        if name in df.columns:
+            return name
+    return None
+
+
+# Identify actual columns from Google Sheet
+order_id_col = find_column(orders, ["Order ID", "OrderID"])
+order_service_col = find_column(orders, ["Service", "Service Name"])
+
+service_name_col = find_column(
+    services,
+    ["Service Name", "Service"]
+)
+
+required_skill_col = find_column(
+    services,
+    ["Required Skill", "Skill"]
+)
+
+required_kit_col = find_column(
+    services,
+    ["Required Kit", "Kit"]
+)
+
+partner_name_col = find_column(
+    partners,
+    ["Partner Name", "Name"]
+)
+
+active_col = find_column(
+    partners,
+    ["Active Status", "Active"]
+)
+
+skills_col = find_column(
+    partners,
+    ["Skills", "Skill"]
+)
+
+kit_col = find_column(
+    partners,
+    ["Kit Status", "Kit"]
+)
+
+
+# Stop safely if an important column is missing
+required_columns = {
+    "Order ID": order_id_col,
+    "Order Service": order_service_col,
+    "Service Name": service_name_col,
+    "Required Skill": required_skill_col,
+    "Required Kit": required_kit_col,
+    "Partner Name": partner_name_col,
+    "Active": active_col,
+    "Skills": skills_col,
+    "Kit Status": kit_col
+}
+
+missing = [
+    name
+    for name, column in required_columns.items()
+    if column is None
+]
+
+if missing:
+    st.error(
+        "Missing columns: " + ", ".join(missing)
+    )
+
+    st.write("Orders columns:", list(orders.columns))
+    st.write("Services columns:", list(services.columns))
+    st.write("Partners columns:", list(partners.columns))
+
+    st.stop()
+
+
+# Select customer order
 selected_order_id = st.selectbox(
     "Select Customer Order",
-    orders["Order ID"].astype(str).tolist()
+    orders[order_id_col].astype(str).tolist()
 )
 
 selected_order = orders[
-    orders["Order ID"].astype(str) == selected_order_id
+    orders[order_id_col].astype(str)
+    == selected_order_id
 ].iloc[0]
 
-# Order details
-selected_service = str(selected_order["Service"])
+selected_service = str(
+    selected_order[order_service_col]
+).strip()
 
 st.write("### Selected Order")
-st.write("**Order ID:**", selected_order_id)
-st.write("**Service:**", selected_service)
 
-# Find service information
-service_row = services[
-    services["Service Name"].astype(str).str.lower()
+col1, col2 = st.columns(2)
+
+with col1:
+    st.write("**Order ID:**", selected_order_id)
+
+with col2:
+    st.write("**Service:**", selected_service)
+
+
+# Find service requirements
+matching_service = services[
+    services[service_name_col]
+    .astype(str)
+    .str.strip()
+    .str.lower()
     == selected_service.lower()
-].iloc[0]
+]
 
-required_skill = str(service_row["Required Skill"])
-required_kit = str(service_row["Required Kit"])
+if matching_service.empty:
+    st.error(
+        f"No service configuration found for {selected_service}"
+    )
+    st.stop()
+
+service_row = matching_service.iloc[0]
+
+required_skill = str(
+    service_row[required_skill_col]
+).strip()
+
+required_kit = str(
+    service_row[required_kit_col]
+).strip()
 
 st.info(
-    f"Required Skill: {required_skill} | Required Kit: {required_kit}"
+    f"Required Skill: {required_skill} | "
+    f"Required Kit: {required_kit}"
 )
 
-# Check every partner
+
+# Evaluate partners
 results = []
 
 for _, partner in partners.iterrows():
 
-    # ACTIVE CHECK
-    active_value = str(partner["Active"]).strip().lower()
-    active_ok = active_value in ["yes", "true", "1", "active"]
+    # 1. Active status
+    active_value = str(
+        partner[active_col]
+    ).strip().lower()
 
-    # SKILL CHECK
-    partner_skills = str(partner["Skills"]).strip().lower()
-    skill_ok = required_skill.lower() in partner_skills
+    active_ok = active_value in [
+        "yes",
+        "true",
+        "1",
+        "active"
+    ]
 
-    # KIT CHECK
-    partner_kit = str(partner["Kit Status"]).strip().lower()
-    required_kit_clean = required_kit.lower().replace(" kit", "").strip()
+
+    # 2. Skill match
+    partner_skills = str(
+        partner[skills_col]
+    ).strip().lower()
+
+    skill_ok = (
+        required_skill.lower()
+        in partner_skills
+    )
+
+
+    # 3. Kit check
+    partner_kit = str(
+        partner[kit_col]
+    ).strip().lower()
+
+    required_kit_clean = (
+        required_kit
+        .lower()
+        .replace(" kit", "")
+        .strip()
+    )
 
     kit_ok = (
         required_kit_clean in partner_kit
-        or partner_kit in ["available", "yes", "ready"]
+        or partner_kit in [
+            "available",
+            "yes",
+            "ready"
+        ]
     )
 
-    # FINAL ELIGIBILITY
-    eligible = active_ok and skill_ok and kit_ok
+
+    # Final eligibility
+    eligible = (
+        active_ok
+        and skill_ok
+        and kit_ok
+    )
 
     results.append({
-        "Partner": partner["Partner Name"],
+        "Partner": partner[partner_name_col],
         "Active": "✅" if active_ok else "❌",
         "Skill Match": "✅" if skill_ok else "❌",
         "Kit Ready": "✅" if kit_ok else "❌",
@@ -126,7 +271,7 @@ st.dataframe(
     hide_index=True
 )
 
-# Show eligible partners only
+
 eligible_partners = eligibility_df[
     eligibility_df["Eligible"] == "✅ YES"
 ]
@@ -134,11 +279,13 @@ eligible_partners = eligibility_df[
 if len(eligible_partners) > 0:
 
     st.success(
-        f"{len(eligible_partners)} partner(s) eligible for this order."
+        f"{len(eligible_partners)} partner(s) "
+        f"eligible for this order."
     )
 
 else:
 
     st.warning(
-        "No partner currently satisfies the basic eligibility conditions."
+        "No partner currently satisfies "
+        "the basic eligibility conditions."
     )
