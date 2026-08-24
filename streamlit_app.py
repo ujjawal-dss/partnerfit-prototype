@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import requests
+import time
 
 st.set_page_config(
     page_title="PartnerFit",
@@ -24,6 +26,91 @@ def load_data():
     travel = pd.read_csv(TRAVEL_URL)
 
     return partners, services, orders, workload, travel
+
+# ==========================================
+# LIVE LOCATION / ROUTING HELPERS
+# ==========================================
+
+@st.cache_data(ttl=86400)
+def geocode_location(location_name):
+
+    query = f"{location_name}, Noida, Uttar Pradesh, India"
+
+    url = "https://nominatim.openstreetmap.org/search"
+
+    params = {
+        "q": query,
+        "format": "json",
+        "limit": 1
+    }
+
+    headers = {
+        "User-Agent": "PartnerFitPrototype/1.0"
+    }
+
+    response = requests.get(
+        url,
+        params=params,
+        headers=headers,
+        timeout=10
+    )
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    if not data:
+        return None, None
+
+    lat = float(data[0]["lat"])
+    lon = float(data[0]["lon"])
+
+    # Respect public Nominatim usage policy
+    time.sleep(1.1)
+
+    return lat, lon
+
+
+@st.cache_data(ttl=3600)
+def get_osrm_route(
+    origin_lat,
+    origin_lon,
+    destination_lat,
+    destination_lon
+):
+
+    url = (
+        "https://router.project-osrm.org/route/v1/driving/"
+        f"{origin_lon},{origin_lat};"
+        f"{destination_lon},{destination_lat}"
+    )
+
+    params = {
+        "overview": "false"
+    }
+
+    response = requests.get(
+        url,
+        params=params,
+        timeout=10
+    )
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    if (
+        data.get("code") != "Ok"
+        or not data.get("routes")
+    ):
+        return None, None
+
+    route = data["routes"][0]
+
+    distance_km = route["distance"] / 1000
+    eta_min = route["duration"] / 60
+
+    return round(distance_km, 1), round(eta_min)
 
 st.title("PartnerFit")
 st.caption("Yes Madam Partner Assignment Prototype")
