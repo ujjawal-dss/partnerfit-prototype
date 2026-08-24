@@ -49,6 +49,7 @@ def geocode_location(location_name):
         "sector 76": (28.5679, 77.3829),
         "sector 78": (28.5558, 77.3895),
         "sector 90": (28.5255, 77.4100),
+        "sector 105": (28.5370, 77.3760),
     }
 
     return sector_coordinates.get(
