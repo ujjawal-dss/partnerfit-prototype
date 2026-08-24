@@ -521,19 +521,63 @@ eligible_master = partners[
     partners[partner_name_col].isin(eligible_names)
 ].copy()
 
+# ==========================================
+# LIVE ROUTING FOR ALL ELIGIBLE PARTNERS
+# ==========================================
 
-# Filter travel only for selected order
-selected_travel = travel[
-    travel[travel_order_id_col].astype(str)
-    == str(selected_order_id)
-].copy()
+customer_location = selected_order[order_location_col]
 
-if selected_travel.empty:
-    st.warning(
-        f"Travel data is not available for Order {selected_order_id}. "
-        "Recommendation cannot be calculated yet."
+customer_lat, customer_lon = geocode_location(
+    customer_location
+)
+
+live_route_rows = []
+
+if customer_lat is None or customer_lon is None:
+    st.error(
+        f"Could not locate customer location: {customer_location}"
     )
     st.stop()
+
+with st.spinner("Calculating live routes for eligible partners..."):
+
+    for _, partner in eligible_master.iterrows():
+
+        partner_location = partner[partner_location_col]
+
+        partner_lat, partner_lon = geocode_location(
+            partner_location
+        )
+
+        if partner_lat is None or partner_lon is None:
+            continue
+
+        live_distance, live_eta = get_osrm_route(
+            partner_lat,
+            partner_lon,
+            customer_lat,
+            customer_lon
+        )
+
+        live_route_rows.append({
+            "Partner ID": partner[partner_id_col],
+            "Live Distance (km)": live_distance,
+            "Live ETA (min)": live_eta
+        })
+
+
+live_routes_df = pd.DataFrame(live_route_rows)
+
+st.write("### 🗺️ Live Routes — Eligible Partners")
+
+st.dataframe(
+    live_routes_df,
+    use_container_width=True,
+    hide_index=True
+)
+
+
+
 
 
 # Merge partner + workload
@@ -544,43 +588,73 @@ comparison = eligible_master.merge(
     how="left"
 )
 
-
-# Merge travel
+# Merge live routing data
 comparison = comparison.merge(
-    selected_travel,
+    live_routes_df,
     left_on=partner_id_col,
-    right_on=travel_partner_id_col,
+    right_on="Partner ID",
     how="left",
-    suffixes=("", "_travel")
+    suffixes=("", "_live")
 )
 
+# Use LIVE distance and ETA for PartnerFit
+comparison["Distance (km)"] = comparison["Live Distance (km)"]
+comparison["ETA (min)"] = comparison["Live ETA (min)"]
 
-# Calculate net earning from this order
+
+
+
+# ==========================================
+# LIVE TRAVEL COST CALCULATION
+# ==========================================
+
 payout = pd.to_numeric(
     selected_order["Payout"],
     errors="coerce"
 )
 
-travel_cost_col = find_column(
-    comparison,
-    [
-        "One-Way Travel Cost (₹)",
-        "Travel Cost (₹)",
-        "Travel Cost"
+# Get one transport mode per partner from Travel sheet
+partner_mode_lookup = (
+    travel[
+        ["Partner ID", "Mode of Transport"]
     ]
+    .drop_duplicates(subset=["Partner ID"])
 )
 
-if travel_cost_col is not None:
-    comparison["Net Earning From Order (₹)"] = (
-        payout
-        - pd.to_numeric(
-            comparison[travel_cost_col],
-            errors="coerce"
-        )
-    )
-else:
-    comparison["Net Earning From Order (₹)"] = None
+comparison = comparison.merge(
+    partner_mode_lookup,
+    left_on=partner_id_col,
+    right_on="Partner ID",
+    how="left",
+    suffixes=("", "_mode")
+)
 
+# Estimated cost per km by transport mode
+cost_per_km = {
+    "Scooter": 5,
+    "Bike": 5,
+    "Auto": 18,
+    "Metro": 6,
+    "Walking": 0
+}
+
+comparison["Cost Per KM (₹)"] = (
+    comparison["Mode of Transport"]
+    .map(cost_per_km)
+    .fillna(5)
+)
+
+comparison["One-Way Travel Cost (₹)"] = (
+    comparison["Distance (km)"]
+    * comparison["Cost Per KM (₹)"]
+).round(0)
+
+travel_cost_col = "One-Way Travel Cost (₹)"
+
+comparison["Net Earning From Order (₹)"] = (
+    payout
+    - comparison["One-Way Travel Cost (₹)"]
+).round(0)
 
 # Build clean comparison table
 display_columns = []
