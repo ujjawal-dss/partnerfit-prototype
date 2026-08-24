@@ -34,55 +34,27 @@ def load_data():
 @st.cache_data(ttl=86400)
 def geocode_location(location_name):
 
-    query = f"{location_name}, Noida, Uttar Pradesh, India"
+    location_key = str(location_name).strip().lower()
 
-    url = "https://nominatim.openstreetmap.org/search"
-
-    params = {
-        "q": query,
-        "format": "json",
-        "limit": 1
+    sector_coordinates = {
+        "sector 45": (28.5510, 77.3502),
+        "sector 50": (28.5725, 77.3707),
+        "sector 51": (28.5800, 77.3682),
+        "sector 60": (28.6031, 77.3672),
+        "sector 61": (28.5964, 77.3682),
+        "sector 62": (28.6207, 77.3631),
+        "sector 63": (28.6237, 77.3853),
+        "sector 64": (28.6125, 77.3767),
+        "sector 70": (28.5970, 77.3839),
+        "sector 76": (28.5679, 77.3829),
+        "sector 78": (28.5558, 77.3895),
+        "sector 90": (28.5255, 77.4100),
     }
 
-    headers = {
-        "User-Agent": "PartnerFitInterviewPrototype/1.0"
-    }
-
-    for attempt in range(3):
-
-        try:
-            response = requests.get(
-                url,
-                params=params,
-                headers=headers,
-                timeout=15
-            )
-
-            if response.status_code == 200:
-
-                data = response.json()
-
-                if not data:
-                    return None, None
-
-                lat = float(data[0]["lat"])
-                lon = float(data[0]["lon"])
-
-                time.sleep(1.2)
-
-                return lat, lon
-
-            elif response.status_code in [429, 403]:
-
-                time.sleep(3 + attempt * 2)
-
-            else:
-                time.sleep(2)
-
-        except requests.RequestException:
-            time.sleep(2 + attempt)
-
-    return None, None
+    return sector_coordinates.get(
+        location_key,
+        (None, None)
+    )
 
 @st.cache_data(ttl=3600)
 def get_osrm_route(
