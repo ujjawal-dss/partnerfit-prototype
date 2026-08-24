@@ -1019,6 +1019,87 @@ if best_partner["Experience Score"] >= 70:
 for reason in reasons:
     st.write("✅", reason)
 
+# ==========================================
+# DECISION EXPLAINABILITY
+# ==========================================
+
+st.write("### 🔎 How PartnerFit Made This Decision")
+
+st.caption(
+    "Eligible partners are ranked using operational efficiency, "
+    "fairness, experience, reliability and travel factors."
+)
+
+factor_breakdown = pd.DataFrame([
+    {
+        "Factor": "ETA",
+        "Factor Score": best_partner["ETA Score"],
+        "Weight": "20%",
+        "Weighted Contribution": best_partner["ETA Score"] * 0.20
+    },
+    {
+        "Factor": "Availability",
+        "Factor Score": best_partner["Availability Score"],
+        "Weight": "20%",
+        "Weighted Contribution": best_partner["Availability Score"] * 0.20
+    },
+    {
+        "Factor": "Workload",
+        "Factor Score": best_partner["Workload Score"],
+        "Weight": "15%",
+        "Weighted Contribution": best_partner["Workload Score"] * 0.15
+    },
+    {
+        "Factor": "Earnings Fairness",
+        "Factor Score": best_partner["Earnings Fairness Score"],
+        "Weight": "15%",
+        "Weighted Contribution": best_partner["Earnings Fairness Score"] * 0.15
+    },
+    {
+        "Factor": "Experience",
+        "Factor Score": best_partner["Experience Score"],
+        "Weight": "10%",
+        "Weighted Contribution": best_partner["Experience Score"] * 0.10
+    },
+    {
+        "Factor": "Reliability",
+        "Factor Score": best_partner["Reliability Score"],
+        "Weight": "10%",
+        "Weighted Contribution": best_partner["Reliability Score"] * 0.10
+    },
+    {
+        "Factor": "Travel Cost",
+        "Factor Score": best_partner["Travel Cost Score"],
+        "Weight": "5%",
+        "Weighted Contribution": best_partner["Travel Cost Score"] * 0.05
+    },
+    {
+        "Factor": "Distance",
+        "Factor Score": best_partner["Distance Score"],
+        "Weight": "5%",
+        "Weighted Contribution": best_partner["Distance Score"] * 0.05
+    }
+])
+
+factor_breakdown["Factor Score"] = (
+    factor_breakdown["Factor Score"].round(1)
+)
+
+factor_breakdown["Weighted Contribution"] = (
+    factor_breakdown["Weighted Contribution"].round(1)
+)
+
+st.dataframe(
+    factor_breakdown,
+    use_container_width=True,
+    hide_index=True
+)
+
+st.info(
+    f"Final PartnerFit Score for {best_name}: "
+    f"{best_score}/100"
+)
+
 # ------------------------------------------
 # NEAREST VS RECOMMENDED COMPARISON
 # ------------------------------------------
