@@ -742,11 +742,11 @@ if availability_col:
     )
 
     score_df["Availability Score"] = 100 * (
-        availability - availability.min()
-    ) / max(
-        availability.max() - availability.min(),
-        1
-    )
+    availability.max() - availability
+) / max(
+    availability.max() - availability.min(),
+    1
+)
 else:
     score_df["Availability Score"] = 50
 
