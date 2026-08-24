@@ -1173,25 +1173,57 @@ if st.button(
     f"Assign {best_name} to Order {selected_order_id}",
     type="primary"
 ):
-    st.success(
-        f"Order {selected_order_id} has been assigned to {best_name}."
-    )
 
-    st.write("### Assignment Summary")
+    try:
+        assignment_api_url = st.secrets["ASSIGNMENT_API_URL"]
+        assignment_api_secret = st.secrets["ASSIGNMENT_API_SECRET"]
 
-    assignment_summary = pd.DataFrame([
-        {
-            "Order ID": selected_order_id,
-            "Service": selected_service,
-            "Assigned Partner": best_name,
-            "PartnerFit Score": best_score,
-            "ETA (min)": best_eta,
-            "Status": "Assigned"
-        }
-    ])
+        response = requests.post(
+            assignment_api_url,
+            json={
+                "secret": assignment_api_secret,
+                "order_id": selected_order_id,
+                "partner_name": best_name
+            },
+            timeout=15
+        )
 
-    st.dataframe(
-        assignment_summary,
-        use_container_width=True,
-        hide_index=True
-    )
+        result = response.json()
+
+        if result.get("success"):
+
+            st.success(
+                f"✅ Order {selected_order_id} assigned to {best_name}. "
+                f"Google Sheet updated successfully."
+            )
+
+            st.cache_data.clear()
+
+            assignment_summary = pd.DataFrame([
+                {
+                    "Order ID": selected_order_id,
+                    "Service": selected_service,
+                    "Assigned Partner": best_name,
+                    "PartnerFit Score": best_score,
+                    "ETA (min)": best_eta,
+                    "Status": "Assigned"
+                }
+            ])
+
+            st.write("### Assignment Summary")
+
+            st.dataframe(
+                assignment_summary,
+                use_container_width=True,
+                hide_index=True
+            )
+
+        else:
+            st.error(
+                "Assignment failed: "
+                + str(result.get("error"))
+            )
+
+    except Exception as e:
+        st.error("Could not update Google Sheet.")
+        st.code(str(e))
