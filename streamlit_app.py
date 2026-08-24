@@ -45,31 +45,44 @@ def geocode_location(location_name):
     }
 
     headers = {
-        "User-Agent": "PartnerFitPrototype/1.0"
+        "User-Agent": "PartnerFitInterviewPrototype/1.0"
     }
 
-    response = requests.get(
-        url,
-        params=params,
-        headers=headers,
-        timeout=10
-    )
+    for attempt in range(3):
 
-    response.raise_for_status()
+        try:
+            response = requests.get(
+                url,
+                params=params,
+                headers=headers,
+                timeout=15
+            )
 
-    data = response.json()
+            if response.status_code == 200:
 
-    if not data:
-        return None, None
+                data = response.json()
 
-    lat = float(data[0]["lat"])
-    lon = float(data[0]["lon"])
+                if not data:
+                    return None, None
 
-    # Respect public Nominatim usage policy
-    time.sleep(1.1)
+                lat = float(data[0]["lat"])
+                lon = float(data[0]["lon"])
 
-    return lat, lon
+                time.sleep(1.2)
 
+                return lat, lon
+
+            elif response.status_code in [429, 403]:
+
+                time.sleep(3 + attempt * 2)
+
+            else:
+                time.sleep(2)
+
+        except requests.RequestException:
+            time.sleep(2 + attempt)
+
+    return None, None
 
 @st.cache_data(ttl=3600)
 def get_osrm_route(
@@ -282,63 +295,6 @@ with col1:
 
 with col2:
     st.write("**Service:**", selected_service)
-
-# ==========================================
-# LIVE ROUTE TEST
-# ==========================================
-
-st.write("### 🗺️ Live Route Test")
-
-test_partner = partners.iloc[0]
-
-test_partner_name = test_partner[partner_name_col]
-test_partner_location = test_partner[partner_location_col]
-customer_location = selected_order[order_location_col]
-
-if st.button("Test Live Distance & ETA"):
-
-    try:
-        partner_lat, partner_lon = geocode_location(
-            test_partner_location
-        )
-
-        customer_lat, customer_lon = geocode_location(
-            customer_location
-        )
-
-        if partner_lat is None or customer_lat is None:
-            st.error("Could not find one of the locations.")
-
-        else:
-            live_distance, live_eta = get_osrm_route(
-                partner_lat,
-                partner_lon,
-                customer_lat,
-                customer_lon
-            )
-
-            st.success(
-                f"{test_partner_name}: "
-                f"{test_partner_location} → {customer_location}"
-            )
-
-            c1, c2 = st.columns(2)
-
-            with c1:
-                st.metric(
-                    "Live Road Distance",
-                    f"{live_distance} km"
-                )
-
-            with c2:
-                st.metric(
-                    "Live ETA",
-                    f"{live_eta} min"
-                )
-
-    except Exception as e:
-        st.error("Live routing test failed.")
-        st.code(str(e))
 
 
 # Find service requirements
