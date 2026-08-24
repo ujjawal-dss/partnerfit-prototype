@@ -95,6 +95,10 @@ def get_osrm_route(
 
     distance_km = route["distance"] / 1000
     eta_min = route["duration"] / 60
+        # Same-sector fallback
+    if distance_km < 0.1:
+        distance_km = 1.5
+        eta_min = 6
 
     return round(distance_km, 1), round(eta_min)
 
