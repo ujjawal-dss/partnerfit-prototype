@@ -181,6 +181,16 @@ def find_column(df, possible_names):
 order_id_col = find_column(orders, ["Order ID", "OrderID"])
 order_service_col = find_column(orders, ["Service", "Service Name"])
 
+order_location_col = find_column(
+    orders,
+    ["Customer Location", "Location"]
+)
+
+partner_location_col = find_column(
+    partners,
+    ["Location", "Partner Location"]
+)
+
 service_name_col = find_column(
     services,
     ["Service Name", "Service"]
@@ -272,6 +282,63 @@ with col1:
 
 with col2:
     st.write("**Service:**", selected_service)
+
+# ==========================================
+# LIVE ROUTE TEST
+# ==========================================
+
+st.write("### 🗺️ Live Route Test")
+
+test_partner = partners.iloc[0]
+
+test_partner_name = test_partner[partner_name_col]
+test_partner_location = test_partner[partner_location_col]
+customer_location = selected_order[order_location_col]
+
+if st.button("Test Live Distance & ETA"):
+
+    try:
+        partner_lat, partner_lon = geocode_location(
+            test_partner_location
+        )
+
+        customer_lat, customer_lon = geocode_location(
+            customer_location
+        )
+
+        if partner_lat is None or customer_lat is None:
+            st.error("Could not find one of the locations.")
+
+        else:
+            live_distance, live_eta = get_osrm_route(
+                partner_lat,
+                partner_lon,
+                customer_lat,
+                customer_lon
+            )
+
+            st.success(
+                f"{test_partner_name}: "
+                f"{test_partner_location} → {customer_location}"
+            )
+
+            c1, c2 = st.columns(2)
+
+            with c1:
+                st.metric(
+                    "Live Road Distance",
+                    f"{live_distance} km"
+                )
+
+            with c2:
+                st.metric(
+                    "Live ETA",
+                    f"{live_eta} min"
+                )
+
+    except Exception as e:
+        st.error("Live routing test failed.")
+        st.code(str(e))
 
 
 # Find service requirements
