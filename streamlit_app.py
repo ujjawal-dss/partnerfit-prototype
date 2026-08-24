@@ -1182,6 +1182,7 @@ if st.button(
             assignment_api_url,
             json={
                 "secret": assignment_api_secret,
+                "action": "assign",
                 "order_id": selected_order_id,
                 "partner_name": best_name
             },
@@ -1226,4 +1227,52 @@ if st.button(
 
     except Exception as e:
         st.error("Could not update Google Sheet.")
+        st.code(str(e))
+
+# ==========================================
+# RESET DEMO DATA
+# ==========================================
+
+st.divider()
+st.subheader("♻️ Reset Demo Data")
+
+st.caption(
+    "Use this after an interview to restore all orders "
+    "for the next demo."
+)
+
+if st.button("♻️ Reset All Demo Orders"):
+
+    try:
+        assignment_api_url = st.secrets["ASSIGNMENT_API_URL"]
+        assignment_api_secret = st.secrets["ASSIGNMENT_API_SECRET"]
+
+        response = requests.post(
+            assignment_api_url,
+            json={
+                "secret": assignment_api_secret,
+                "action": "reset"
+            },
+            timeout=15
+        )
+
+        result = response.json()
+
+        if result.get("success"):
+
+            st.cache_data.clear()
+
+            st.success(
+                "✅ Demo reset complete! "
+                "All orders are New and ready for the next interview."
+            )
+
+        else:
+            st.error(
+                "Reset failed: "
+                + str(result.get("error"))
+            )
+
+    except Exception as e:
+        st.error("Could not reset demo data.")
         st.code(str(e))
