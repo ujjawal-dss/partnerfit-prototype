@@ -265,14 +265,51 @@ selected_service = str(
 
 st.write("### Selected Order")
 
-col1, col2 = st.columns(2)
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
-    st.write("**Order ID:**", selected_order_id)
+    st.metric("Order ID", selected_order_id)
 
 with col2:
-    st.write("**Service:**", selected_service)
+    st.metric("Service", selected_service)
 
+with col3:
+    st.metric(
+        "Customer Location",
+        str(selected_order["Customer Location"])
+    )
+
+with col4:
+    st.metric(
+        "Payout",
+        f"₹{selected_order['Payout']}"
+    )
+
+col5, col6, col7, col8 = st.columns(4)
+
+with col5:
+    st.metric(
+        "Order Date",
+        str(selected_order["Order Date"])
+    )
+
+with col6:
+    st.metric(
+        "Order Time",
+        str(selected_order["Order Time"])
+    )
+
+with col7:
+    st.metric(
+        "Service Duration",
+        f"{selected_order['Service Duration']} min"
+    )
+
+with col8:
+    st.metric(
+        "Status",
+        str(selected_order["Status"])
+    )
 
 # Find service requirements
 matching_service = services[
